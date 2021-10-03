@@ -44,6 +44,7 @@ class User {
   }
 
 
+
   /** Is this username + password combo correct?
    *
    * Return all user data if true, throws error if invalid
@@ -78,19 +79,31 @@ class User {
    * [{username, first_name, last_name, email, phone}, ...]
    *
    * */
+// BIG #5 FIX
 
-  static async getAll(username, password) {
-    const result = await db.query(
-      `SELECT username,
-                first_name,
-                last_name,
-                email,
-                phone
-            FROM users 
-            ORDER BY username`
-    );
-    return result.rows;
-  }
+static async getAll(username, password) {
+  const result = await db.query(
+    `SELECT username,
+              first_name,
+              last_name
+          FROM users 
+          ORDER BY username`
+  );
+  return result.rows;
+}
+
+  // static async getAll(username, password) {
+  //   const result = await db.query(
+  //     `SELECT username,
+  //               first_name,
+  //               last_name,
+  //               email,
+  //               phone
+  //           FROM users 
+  //           ORDER BY username`
+  //   );
+  //   return result.rows;
+  // }
 
   /** Returns user info: {username, first_name, last_name, email, phone}
    *
@@ -141,6 +154,9 @@ class User {
     if (!user) {
       throw new ExpressError('No such user', 404);
     }
+
+    // BUG #4 FIX
+    delete user.password
 
     return user;
   }

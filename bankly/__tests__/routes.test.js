@@ -10,6 +10,7 @@ const bcrypt = require("bcrypt");
 const createToken = require("../helpers/createToken");
 const jwt = require("jsonwebtoken");
 const { SECRET_KEY } = require("../config");
+const spoofedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJhZG1pbiI6dHJ1ZSwiaWF0IjoxNjMzMjkwODA1fQ.dQ3GRNMiwgFokRZqGks8iATk1FrI-REn_UpDRNZb86E"
 
 // tokens for our sample users
 const tokens = {};
@@ -90,6 +91,18 @@ describe("POST /auth/login", function() {
     expect(username).toBe("u1");
     expect(admin).toBe(false);
   });
+
+  test("should allow an admin to login with an admin token returned", async function(){
+    const response = await request(app)
+      .post("/auth/login")
+      .send({username: "u3", password: "pwd3"})
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({ token: expect.any(String) })
+
+    let { username, admin } = jwt.verify(response.body.token, SECRET_KEY);
+    expect(username).toBe("u3")
+    expect(admin).toBe(true);
+  })
 });
 
 describe("GET /users", function() {
@@ -104,6 +117,7 @@ describe("GET /users", function() {
       .send({ _token: tokens.u1 });
     expect(response.statusCode).toBe(200);
     expect(response.body.users.length).toBe(3);
+    expect(response.body.users[0]).toEqual({"username":"u1", "first_name":"fn1", "last_name":"ln1"})
   });
 });
 
@@ -141,6 +155,14 @@ describe("PATCH /users/[username]", function() {
     expect(response.statusCode).toBe(401);
   });
 
+  // test("should deny access if spoofed token", async function() {
+  //   const response = await request(app)
+  //     .patch("/users/u1")
+  //     .send({ _token: spoofedToken }); // hacked user!
+  //     console.log(response.body)
+  //   expect(response.statusCode).toBe(401);
+  // });
+
   test("should patch data if admin", async function() {
     const response = await request(app)
       .patch("/users/u1")
@@ -152,9 +174,16 @@ describe("PATCH /users/[username]", function() {
       last_name: "ln1",
       email: "email1",
       phone: "phone1",
-      admin: false,
-      password: expect.any(String)
+      admin: false
     });
+  });
+
+  test("should not accept incorrect data, such as pw or admin privileges", async function() {
+    const response = await request(app)
+      .patch("/users/u1")
+      .send({ _token: tokens.u3, first_name: "new-fn1", password: "newPassword", admin: true }); // u3 is admin
+    expect(response.statusCode).toBe(401);
+    expect(response.body.user).toEqual();
   });
 
   test("should disallowing patching not-allowed-fields", async function() {

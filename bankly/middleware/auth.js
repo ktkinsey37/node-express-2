@@ -19,6 +19,8 @@ function requireLogin(req, res, next) {
 
 /** Authorization Middleware: Requires user is logged in and is staff. */
 
+// FOR SURE CAN BE SPOOFED. JUST CARRIED OUT SUCCESSFUL JWT INJECTION ATTACK. ALSO CHANGED STATUS TO ADMIN SO NOW HAVE ADMIN ACCESS
+
 function requireAdmin(req, res, next) {
   try {
     if (req.curr_admin) {
@@ -44,6 +46,20 @@ function requireAdmin(req, res, next) {
  *
  **/
 
+// BUG #2 FIX
+ function authenticateJWT(req, res, next) {
+  try {
+    const authHeader = req.headers && req.headers.authorization;
+    if (authHeader) {
+      const token = authHeader.replace(/^[Bb]earer /, "").trim();
+      res.locals.user = jwt.verify(token, SECRET_KEY);
+    }
+    return next();
+  } catch (err) {
+    return next();
+  }
+}
+
 function authUser(req, res, next) {
   try {
     const token = req.body._token || req.query._token;
@@ -62,5 +78,6 @@ function authUser(req, res, next) {
 module.exports = {
   requireLogin,
   requireAdmin,
-  authUser
+  authUser,
+  authenticateJWT
 };

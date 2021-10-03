@@ -4,7 +4,13 @@ const User = require('../models/user');
 const express = require('express');
 const router = new express.Router();
 const ExpressError = require('../helpers/expressError');
-const { authUser, requireLogin, requireAdmin } = require('../middleware/auth');
+const db = require('../db');
+const { authUser, requireLogin, requireAdmin, authenticateJWT } = require('../middleware/auth');
+
+// BUG #3 FIX (Including the json file this links to)
+const jsonschema = require("jsonschema");
+const userUpdateSchema = require("../schemas/userUpdate.json");
+
 
 /** GET /
  *
@@ -15,7 +21,7 @@ const { authUser, requireLogin, requireAdmin } = require('../middleware/auth');
  *
  */
 
-router.get('/', authUser, requireLogin, async function(req, res, next) {
+router.get('/', authUser, requireLogin, authenticateJWT, async function(req, res, next) {
   try {
     let users = await User.getAll();
     return res.json({ users });
@@ -35,7 +41,7 @@ router.get('/', authUser, requireLogin, async function(req, res, next) {
  *
  */
 
-router.get('/:username', authUser, requireLogin, async function(
+router.get('/:username', authUser, requireLogin, authenticateJWT, async function(
   req,
   res,
   next
@@ -48,7 +54,8 @@ router.get('/:username', authUser, requireLogin, async function(
   }
 });
 
-/** PATCH /[username]
+
+/** PATCH /[username]+
  *
  * Update user. Only the user themselves or any admin user can use this.
  *
@@ -63,19 +70,46 @@ router.get('/:username', authUser, requireLogin, async function(
  *
  */
 
-router.patch('/:username', authUser, requireLogin, requireAdmin, async function(
+router.patch('/:username', authUser, requireLogin, requireAdmin, authenticateJWT, async function(
   req,
   res,
   next
 ) {
   try {
-    if (!req.curr_admin && req.curr_username !== req.params.username) {
-      throw new ExpressError('Only  that user or admin can edit a user.', 401);
+
+    // BUG #3 FIX
+
+    // We're already finished with it at this point
+    delete req.body._token;
+
+    username = req.params.username
+    const usernameCheck = await db.query(
+      `SELECT username 
+        FROM users 
+        WHERE username = $1`,
+      [username]
+    );
+
+    if (!usernameCheck.rows[0]) {
+      throw new ExpressError(
+        `Cannot find a user with username '${username}'`,
+        404
+      );
     }
 
+    const validator = jsonschema.validate(req.body, userUpdateSchema);
+    if (!validator.valid) {
+      const errs = validator.errors.map(e => e.stack);
+      throw new ExpressError(`Invalid information input: ${errs}`, 401);
+    }
+
+    if (!req.curr_admin && req.curr_username !== req.params.username) {
+      throw new ExpressError('Only that user or admin can edit a user.', 401);
+    }
+
+    // This step also happens in the sqlforpartialupdate file
     // get fields to change; remove token so we don't try to change it
     let fields = { ...req.body };
-    delete fields._token;
 
     let user = await User.update(req.params.username, fields);
     return res.json({ user });
@@ -94,7 +128,7 @@ router.patch('/:username', authUser, requireLogin, requireAdmin, async function(
  * If user cannot be found, return a 404 err.
  */
 
-router.delete('/:username', authUser, requireAdmin, async function(
+router.delete('/:username', authUser, requireAdmin, authenticateJWT, async function(
   req,
   res,
   next
