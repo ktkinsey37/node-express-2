@@ -163,6 +163,8 @@ describe("PATCH /users/[username]", function() {
   //   expect(response.statusCode).toBe(401);
   // });
 
+  // This test is a problem. Can we talk about it?
+
   test("should patch data if admin", async function() {
     const response = await request(app)
       .patch("/users/u1")
