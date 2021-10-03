@@ -6,5 +6,7 @@
 
 - BUG #4: /patch returns the hashed password, this is a serious security problem if someone ever gets admin access **FIXED
 
-- BUG #5: get /users route returns more info than is requested.
+- BUG #5: get /users route returns more info than is requested. **FIXED
+
+- BUG #6: authUser is able to be spoofed with JWT. **FIXED
 

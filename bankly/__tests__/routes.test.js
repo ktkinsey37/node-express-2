@@ -155,13 +155,13 @@ describe("PATCH /users/[username]", function() {
     expect(response.statusCode).toBe(401);
   });
 
-  // test("should deny access if spoofed token", async function() {
-  //   const response = await request(app)
-  //     .patch("/users/u1")
-  //     .send({ _token: spoofedToken }); // hacked user!
-  //     console.log(response.body)
-  //   expect(response.statusCode).toBe(401);
-  // });
+  test("should deny access if spoofed token", async function() {
+    const response = await request(app)
+      .patch("/users/u1")
+      .send({ _token: spoofedToken }); // hacked user!
+      console.log(response.body)
+    expect(response.statusCode).toBe(401);
+  });
 
   // This test is a problem. Can we talk about it?
 
